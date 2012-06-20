@@ -48,7 +48,8 @@ class apache::params {
       $mod_wsgi_package = 'libapache2-mod-wsgi'
       $ssl_package = 'apache-ssl'
       $apache_dev  = ['libaprutil1-dev', 'libapr1-dev', 'apache2-prefork-dev']
-      $vdir = '/etc/apache2/sites-enabled/'
+      $vdir = '/etc/apache2/sites-available/'
+      $rdir = '/etc/apache2/sites-enabled/'
     }
     default: {
       $apache_name = 'apache2'

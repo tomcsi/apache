@@ -32,10 +32,10 @@
 #  }
 #
 define apache::vhost(
-    $port,
+    $port               = 80,
     $docroot,
-    $serveradmin,
-    $configure_firewall = true,
+    $serveradmin        = "root@ezit.hu",
+    $configure_firewall = false,
     $ssl                = $apache::params::ssl,
     $template           = $apache::params::template,
     $priority           = $apache::params::priority,
@@ -46,7 +46,8 @@ define apache::vhost(
     $options            = $apache::params::options,
     $apache_name        = $apache::params::apache_name,
     $vhost_name         = $apache::params::vhost_name,
-    $logroot            = "/var/log/$apache::params::apache_name"
+    $logroot            = "/var/log/$apache::params::apache_name",
+    $custom             = false
   ) {
 
   include apache
@@ -71,29 +72,56 @@ define apache::vhost(
     }
   }
 
-  file {"${apache::params::vdir}/${priority}-${name}-$docroot":
-    path => $docroot,
-    ensure => directory,
-  }
+#  file {"${apache::params::vdir}/${priority}-${name}-$docroot":
+#    path => $docroot,
+#    ensure => directory,
+#  }
 
-  file {"${apache::params::vdir}/${priority}-${name}-$logroot":
-    path => $logroot,
-    ensure => directory,
-  }
+#  file {"${apache::params::vdir}/${priority}-${name}-$logroot":
+#    path => $logroot,
+#    ensure => directory,
+#  }
 
-  file { "${priority}-${name}.conf":
-      path    => "${apache::params::vdir}/${priority}-${name}.conf",
-      content => template($template),
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0755',
-      require => [
-          Package['httpd'],
-          File["${apache::params::vdir}/${priority}-${name}-$docroot"],
-          File["${apache::params::vdir}/${priority}-${name}-$logroot"],
-      ],
-      notify  => Service['httpd'],
+  if $custom == false {
+    file { "${priority}-${name}.conf":
+        path    => "${apache::params::vdir}/${priority}-${name}.conf",
+        content => template($template),
+        owner   => 'root',
+        group   => 'root',
+        mode    => '0644',
+        require => [
+            Package['httpd'],
+#            File["${apache::params::vdir}/${priority}-${name}-$docroot"],
+#            File["${apache::params::vdir}/${priority}-${name}-$logroot"],
+        ],
+        notify  => Service['httpd'],
+    }
+  } else {
+    file { "${priority}-${name}.conf":
+        path    => "${apache::params::vdir}/${priority}-${name}.conf",
+        source  => "puppet:///files/$fqdn/apache2/vhosts/$name",
+        owner   => 'root',
+        group   => 'root',
+        mode    => '0644',
+        require => [
+            Package['httpd'],
+#            File["${apache::params::vdir}/${priority}-${name}-$docroot"],
+#            File["${apache::params::vdir}/${priority}-${name}-$logroot"],
+        ],
+        notify  => Service['httpd'],
+    }
   }
+  
+  case $::operatingsystem {
+    'ubuntu', 'debian': {
+      file { "a2ensite-${name}":
+        target => "../sites-available/${priority}-${name}.conf",
+        ensure => link,
+        path => "${apache::params::rdir}/${priority}-${name}.conf"
+      }
+    }
+  }
+                  
 
   if $configure_firewall {
     if ! defined(Firewall["0100-INPUT ACCEPT $port"]) {
